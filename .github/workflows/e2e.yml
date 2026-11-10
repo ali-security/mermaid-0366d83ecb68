@@ -1,13 +1,12 @@
 name: E2E
 
 on:
-  push:
-    branches:
-      - develop
-      - master
-      - release/**
-  pull_request:
-  merge_group:
+  workflow_dispatch:
+    inputs:
+      test-filter:
+        description: 'Optional Cypress spec pattern'
+        required: false
+        default: ''
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -33,6 +32,7 @@ env:
 jobs:
   cache:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
       image: cypress/browsers:node-20.16.0-chrome-127.0.6533.88-1-ff-128.0.3-edge-127.0.2651.74-1
       options: --user 1001
@@ -59,7 +59,7 @@ jobs:
 
       - name: Install dependencies
         if: ${{ steps.cache-snapshot.outputs.cache-hit != 'true' }}
-        uses: cypress-io/github-action@108b8684ae52e735ff7891524cbffbcd4be5b19f # v6.7.16
+        uses: cypress-io/github-action@18016a55674bd02cabf197de5762a1710cb5577c # v7.4.9
         with:
           # just perform install
           runTests: false
@@ -75,6 +75,7 @@ jobs:
   # Cypress specs to run.
   detect-scope:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     outputs:
       spec_pattern: ${{ steps.scope.outputs.spec_pattern }}
       matrix: ${{ steps.scope.outputs.matrix }}
@@ -92,60 +93,18 @@ jobs:
       - name: Detect e2e scope
         id: scope
         run: |
-          # Kill-switch: set the repo variable E2E_SCOPE_BY_DIAGRAM to 'false'
-          # to disable scoping.  Scoping is ON by default so that fork PRs
-          # (where repository variables are unavailable) still benefit from it.
-          if [ "${E2E_SCOPE_BY_DIAGRAM}" = "false" ]; then
-            echo "spec_pattern=" >> "$GITHUB_OUTPUT"
-            echo "matrix=[1,2,3,4,5]" >> "$GITHUB_OUTPUT"
-            echo "[detect-scope] Scoping disabled via kill-switch — full suite."
-            exit 0
-          fi
-
-          BASE="${{ env.targetHash }}"
-
-          # For direct pushes to the main development branch, always run the
-          # full suite (no PR diff to scope against).
-          if [ "$BASE" = "develop" ] || [ "$BASE" = "master" ]; then
-            echo "spec_pattern=" >> "$GITHUB_OUTPUT"
-            echo "matrix=[1,2,3,4,5]" >> "$GITHUB_OUTPUT"
-            echo "[detect-scope] Direct push to ${BASE} — full suite."
-            exit 0
-          fi
-
-          # Fetch the target branch so we can find the true merge-base.
-          git fetch origin develop --depth=1 2>/dev/null || true
-          MERGE_BASE=$(git merge-base HEAD origin/develop 2>/dev/null || echo "")
-
-          if [ -z "$MERGE_BASE" ]; then
-            echo "spec_pattern=" >> "$GITHUB_OUTPUT"
-            echo "matrix=[1,2,3,4,5]" >> "$GITHUB_OUTPUT"
-            echo "[detect-scope] Could not determine merge-base — full suite."
-            exit 0
-          fi
-
-          echo "[detect-scope] merge-base: ${MERGE_BASE}"
-
-          # Get changed files and run the detection script.
-          SPEC=$(git diff --name-only "$MERGE_BASE" HEAD 2>/dev/null \
-                 | node scripts/e2e-diagram-scope.mjs \
-                 || echo "")
-
-          # Check and set required no of containers to run
-          if [ "$SPEC" = "SKIP" ]; then
-            echo "spec_pattern=SKIP" >> "$GITHUB_OUTPUT"
+          # Sealed fork build: no PR diff to scope against, so run the full suite
+          # (as upstream does on a direct push to develop/master), or only the
+          # specs named by the test-filter dispatch input.
+          if [ -n "${{ inputs.test-filter }}" ]; then
+            echo "spec_pattern=${{ inputs.test-filter }}" >> "$GITHUB_OUTPUT"
             echo "matrix=[1]" >> "$GITHUB_OUTPUT"
-            echo "[detect-scope] Only docs/ignorable files changed — e2e can be skipped."
-          elif [ -n "$SPEC" ]; then
-            echo "spec_pattern=${SPEC}" >> "$GITHUB_OUTPUT"
-            echo "matrix=[1]" >> "$GITHUB_OUTPUT"
-            echo "[detect-scope] Scoped to: ${SPEC}"
+            echo "[detect-scope] Scoped by test-filter."
           else
             echo "spec_pattern=" >> "$GITHUB_OUTPUT"
             echo "matrix=[1,2,3,4,5]" >> "$GITHUB_OUTPUT"
-            echo "[detect-scope] Cannot scope — full suite."
+            echo "[detect-scope] Sealed fork build — full suite."
           fi
-          echo "[detect-scope] matrix output: $(grep '^matrix=' "$GITHUB_OUTPUT" | tail -1)"
         env:
           # Scoping is ON by default.  To disable, set this repository variable
           # to 'false' (GitHub → Settings → Secrets and variables → Actions → Variables).
@@ -157,6 +116,7 @@ jobs:
     # Skip the entire e2e job when only docs/ignorable files changed.
     if: needs.detect-scope.outputs.spec_pattern != 'SKIP'
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     container:
       image: cypress/browsers:node-20.16.0-chrome-127.0.6533.88-1-ff-128.0.3-edge-127.0.2651.74-1
       options: --user 1001
@@ -185,7 +145,7 @@ jobs:
           key: ${{ runner.os }}-snapshots-${{ env.targetHash }}
 
       - name: Install dependencies
-        uses: cypress-io/github-action@108b8684ae52e735ff7891524cbffbcd4be5b19f # v6.7.16
+        uses: cypress-io/github-action@18016a55674bd02cabf197de5762a1710cb5577c # v7.4.9
         with:
           runTests: false
 
@@ -201,7 +161,7 @@ jobs:
       # Install NPM dependencies, cache them correctly
       # and run all Cypress tests (or a scoped subset when detect-scope fires).
       - name: Cypress run
-        uses: cypress-io/github-action@108b8684ae52e735ff7891524cbffbcd4be5b19f # v6.7.16
+        uses: cypress-io/github-action@18016a55674bd02cabf197de5762a1710cb5577c # v7.4.9
         id: cypress
         with:
           install: false
@@ -243,6 +203,7 @@ jobs:
     if: always()
     needs: [detect-scope, e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Verify e2e outcome
         env:

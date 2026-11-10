@@ -3,12 +3,7 @@
 name: Check if README and docs/README are in sync
 
 on:
-  push:
-    branches:
-      - gh-pages
-  pull_request:
-    branches:
-      - gh-pages
+  workflow_dispatch:
 
 permissions:
   contents: read

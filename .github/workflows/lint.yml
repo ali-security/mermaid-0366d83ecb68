@@ -1,9 +1,6 @@
 name: Lint
 
 on:
-  push:
-  merge_group:
-  pull_request:
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}

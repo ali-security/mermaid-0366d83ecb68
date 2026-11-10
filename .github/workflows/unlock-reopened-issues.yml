@@ -1,8 +1,7 @@
 name: Unlock reopened issue
 
 on:
-  issues:
-    types: [reopened]
+  workflow_dispatch:
 
 jobs:
   triage:

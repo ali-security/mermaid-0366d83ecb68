@@ -1,20 +1,7 @@
 name: Renovatebot Config Lint
 
 on:
-  pull_request:
-    paths:
-      - 'renovate.json'
-      - '.github/workflows/renovatebot-config-lint.yml'
-  push:
-    branches-ignore:
-      # The Renovatebot App will warn us about issues on `develop`
-      # or `renovate/**` branches:
-      # See https://docs.renovatebot.com/config-validation/#validation-of-renovate-config-change-prs
-      - develop
-      - 'renovate/**'
-    paths:
-      - 'renovate.json'
-      - '.github/workflows/renovatebot-config-lint.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -1,9 +1,7 @@
 name: Publish release preview package
 
 on:
-  push:
-    branches:
-      - 'release/**'
+  workflow_dispatch:
 
 permissions:
   contents: read

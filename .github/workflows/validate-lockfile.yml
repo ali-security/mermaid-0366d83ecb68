@@ -1,11 +1,7 @@
 name: Validate pnpm-lock.yaml
 
 on:
-  pull_request_target:
-    paths:
-      - 'pnpm-lock.yaml'
-      - '**/package.json'
-      - '.github/workflows/validate-lockfile.yml'
+  workflow_dispatch:
 
 jobs:
   validate-lockfile:

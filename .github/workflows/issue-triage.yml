@@ -1,8 +1,7 @@
 name: Apply triage label to new issue
 
 on:
-  issues:
-    types: [opened]
+  workflow_dispatch:
 
 permissions: # added using https://github.com/step-security/secure-repo
   contents: read

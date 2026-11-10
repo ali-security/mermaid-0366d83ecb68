@@ -1,12 +1,7 @@
 name: Build Vitepress docs
 
 on:
-  push:
-    branches:
-      - master
-      - release/*
-  pull_request:
-  merge_group:
+  workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
